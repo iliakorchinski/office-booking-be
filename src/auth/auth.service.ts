@@ -6,6 +6,7 @@ import {
 import { UserService } from '../user/user.service';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
+import { Role } from 'src/types/common';
 
 @Injectable()
 export class AuthService {
@@ -14,16 +15,30 @@ export class AuthService {
     private jwt: JwtService,
   ) {}
 
-  async register(email: string, password: string) {
+  async register(
+    email: string,
+    password: string,
+    name: string,
+    surname: string,
+  ) {
     const existing = await this.users.findByEmail(email);
     if (existing) {
       throw new BadRequestException('Email already taken');
     }
 
-    const user = await this.users.createUser(email, password);
+    const user = await this.users.createUser(email, password, name, surname);
     const tokens = this.generateTokens(user);
     await this.users.setRefreshToken(user.id, tokens.refreshToken);
-    return tokens;
+    return {
+      ...tokens,
+      user: {
+        userId: user.id,
+        email: user.email,
+        role: user.role,
+        name: user.name,
+        surname: user.surname,
+      },
+    };
   }
 
   async login(email: string, password: string) {
@@ -36,14 +51,23 @@ export class AuthService {
     const tokens = this.generateTokens(user);
     await this.users.setRefreshToken(user.id, tokens.refreshToken);
 
-    return tokens;
+    return {
+      ...tokens,
+      user: {
+        userId: user.id,
+        email: user.email,
+        role: user.role,
+        name: user.name,
+        surname: user.surname,
+      },
+    };
   }
 
-  generateTokens(user: any) {
+  generateTokens(user: { id: number; email: string; role: Role }) {
     const payload = { id: user.id, email: user.email, role: user.role };
 
-    const accessToken = this.jwt.sign(payload, { expiresIn: '15s' });
-    const refreshToken = this.jwt.sign(payload, { expiresIn: '1m' });
+    const accessToken = this.jwt.sign(payload, { expiresIn: '15m' });
+    const refreshToken = this.jwt.sign(payload, { expiresIn: '7d' });
 
     return { accessToken, refreshToken };
   }
@@ -55,7 +79,6 @@ export class AuthService {
     }
 
     const tokens = this.generateTokens(user);
-    await this.users.setRefreshToken(user.id, tokens.refreshToken);
 
     return tokens;
   }

@@ -8,23 +8,26 @@ services:
       POSTGRES_PASSWORD: pass123
       POSTGRES_DB: office_booking
     ports:
-      - '5432:5432'
+      - '5433:5432'
     volumes:
       - pgdata:/var/lib/postgresql/data
 
   api:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: office-api
     ports:
       - '3000:3000'
     environment:
       NODE_ENV: development
       DATABASE_URL: postgresql://postgres:pass123@db:5432/office_booking?schema=public
+      JWT_SECRET: mysecret
     depends_on:
       - db
     volumes:
       - .:/app
-      - /app/node_modules
-    command: npm run start:dev
+    command: sh -c "npx prisma generate && npx prisma migrate deploy && npm run seed && npm run start:dev"
 
 volumes:
   pgdata:

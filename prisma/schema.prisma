@@ -1,22 +1,47 @@
 
 generator client {
   provider = "prisma-client-js"
+  binaryTargets = ["native", "linux-arm64-openssl-3.0.x"]
 }
 
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+
 }
 
 model User {
   id        Int      @id @default(autoincrement())
   email     String   @unique
   password  String
+  name      String
+  surname   String
   role      Role     @default(USER)
   createdAt DateTime @default(now())
   refreshToken String? 
+  bookings     Booking[] 
 
   @@map("users")
+}
+
+model Desk {
+  id        Int       @id @default(autoincrement())
+  name      String    @unique
+  location  String
+  createdAt DateTime  @default(now())
+  bookings  Booking[]
+}
+
+model Booking {
+  id        Int      @id @default(autoincrement())
+  user      User     @relation(fields: [userId], references: [id])
+  userId    Int
+  desk      Desk     @relation(fields: [deskId], references: [id])
+  deskId    Int
+  date      DateTime
+  createdAt DateTime @default(now())
+
+  @@unique([deskId, date]) 
 }
 
 enum Role {
