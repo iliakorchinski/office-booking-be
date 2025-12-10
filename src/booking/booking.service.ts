@@ -26,6 +26,69 @@ export class BookingService {
     });
   }
 
+  async updateBooking(
+    userId: number,
+    bookingId: number,
+    newDeskId: number,
+    newDate: Date,
+  ) {
+    const booking = await this.prisma.booking.findUnique({
+      where: { id: bookingId },
+    });
+
+    if (!booking) {
+      throw new BadRequestException('Booking not found');
+    }
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (booking.userId !== userId && user?.role !== 'ADMIN') {
+      throw new BadRequestException('Cannot update others bookings');
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const originalDate = new Date(booking.date);
+    originalDate.setHours(0, 0, 0, 0);
+
+    if (originalDate < today) {
+      throw new BadRequestException('Cannot update past bookings');
+    }
+
+    const existingDesk = await this.prisma.booking.findUnique({
+      where: { deskId_date: { deskId: newDeskId, date: newDate } },
+    });
+
+    if (existingDesk && existingDesk.id !== bookingId) {
+      throw new BadRequestException('Desk already booked for this date');
+    }
+
+    const checkUserId = user?.role === 'ADMIN' ? booking.userId : userId;
+
+    const existingUserBooking = await this.prisma.booking.findFirst({
+      where: {
+        userId: checkUserId,
+        date: newDate,
+        NOT: { id: bookingId },
+      },
+    });
+
+    if (existingUserBooking) {
+      throw new BadRequestException('You already have a booking for this date');
+    }
+
+    return this.prisma.booking.update({
+      where: { id: bookingId },
+      data: {
+        deskId: newDeskId,
+        date: newDate,
+      },
+    });
+  }
+
   getUserBookings(userId: number) {
     return this.prisma.booking.findMany({
       where: { userId },

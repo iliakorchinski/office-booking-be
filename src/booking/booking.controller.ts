@@ -3,6 +3,7 @@ import {
   Post,
   Get,
   Delete,
+  Patch,
   Body,
   Param,
   Req,
@@ -43,5 +44,22 @@ export class BookingController {
   async deleteBooking(@Req() req, @Param('id') id: string) {
     const userId = req.user.id;
     return this.bookingService.deleteBooking(userId, Number(id));
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch(':id')
+  async updateBooking(
+    @Req() req,
+    @Param('id') id: string,
+    @Body() body: { deskId: number; date: string },
+  ) {
+    const userId: number = req.user.id;
+
+    return this.bookingService.updateBooking(
+      userId,
+      Number(id),
+      Number(body.deskId),
+      new Date(body.date),
+    );
   }
 }
